@@ -7,6 +7,7 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 
+from firewall_monitor.api.app import create_app
 from firewall_monitor.core.loader import PolicyLoadError, load_policy_file
 from firewall_monitor.database.events import FirewallEventRepository
 from firewall_monitor.database.session import create_sqlite_engine, init_database
@@ -54,6 +55,22 @@ def generate(policy_file: Path) -> None:
         raise typer.Exit(1) from exc
 
     typer.echo(render_nftables_ruleset(policy), nl=False)
+
+
+@app.command()
+def serve(
+    db_path: Annotated[
+        Path,
+        typer.Option("--db", help="SQLite database path."),
+    ] = DEFAULT_DB_PATH,
+    host: str = typer.Option("127.0.0.1", "--host"),
+    port: int = typer.Option(8000, "--port", min=1, max=65535),
+) -> None:
+    """Run the local FastAPI dashboard."""
+
+    import uvicorn
+
+    uvicorn.run(create_app(db_path), host=host, port=port)
 
 
 @app.command()

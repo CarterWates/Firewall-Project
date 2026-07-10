@@ -15,6 +15,7 @@ This repository is the start of a Python-based Linux host firewall manager. The 
 - Parses firewall-monitor log lines into structured events.
 - Stores firewall events in SQLite and lists recent activity from the CLI.
 - Detects repeated blocked sources and prints dry-run temporary block recommendations.
+- Exposes recent events and detections through a local FastAPI API and dashboard.
 - Includes unit tests, Ruff, mypy, and GitHub Actions CI.
 
 ## Safety Model
@@ -60,6 +61,21 @@ firewall-monitor detect scan \
   --block-minutes 30
 ```
 
+## API And Dashboard
+
+The FastAPI app is intended for local development in this milestone.
+
+```bash
+firewall-monitor serve --db ./data/firewall-monitor.sqlite3
+```
+
+Useful routes:
+
+- `GET /`
+- `GET /health`
+- `GET /api/events`
+- `GET /api/detections`
+
 ## Example Policy
 
 ```yaml
@@ -98,7 +114,7 @@ python -m pytest
 
 - Add ruleset backup and rollback.
 - Add explicit, guarded nftables apply support for Linux.
-- Add a FastAPI backend and lightweight dashboard.
+- Add authentication and deployment hardening for the API/dashboard.
 - Add systemd service files for Linux deployment.
 - Add IPv6 support after the IPv4 model is stable.
 
