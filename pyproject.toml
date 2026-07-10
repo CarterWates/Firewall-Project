@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "firewall-monitor"
+version = "0.1.0"
+description = "Safe YAML policy validation and nftables ruleset generation for a Linux host firewall monitor."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Project maintainer" }]
+dependencies = [
+  "pydantic>=2.8,<3.0",
+  "pyyaml>=6.0,<7.0",
+  "typer>=0.12,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<10.0",
+  "ruff>=0.6,<1.0",
+  "mypy>=1.10,<3.0",
+  "types-PyYAML>=6.0,<7.0",
+]
+
+[project.scripts]
+firewall-monitor = "firewall_monitor.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/firewall_monitor"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["firewall_monitor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

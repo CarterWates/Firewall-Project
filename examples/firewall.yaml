@@ -1,0 +1,25 @@
+version: 1
+
+default_policy:
+  input: drop
+  output: accept
+  forward: drop
+
+rules:
+  - name: allow-docs-ssh
+    direction: input
+    action: accept
+    protocol: tcp
+    source: 192.0.2.0/24
+    destination_port: 22
+    connection_state:
+      - established
+      - related
+      - new
+
+  - name: block-telnet
+    direction: input
+    action: drop
+    protocol: tcp
+    destination_port: 23
+    log: true
