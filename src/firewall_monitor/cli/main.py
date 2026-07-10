@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -9,6 +10,8 @@ from pydantic import ValidationError
 from firewall_monitor.core.loader import PolicyLoadError, load_policy_file
 from firewall_monitor.database.events import FirewallEventRepository
 from firewall_monitor.database.session import create_sqlite_engine, init_database
+from firewall_monitor.detection.blocking import build_temporary_block_plan
+from firewall_monitor.detection.suspicious import find_suspicious_sources
 from firewall_monitor.firewall.nftables import render_nftables_ruleset
 from firewall_monitor.firewall.safety import (
     ApplyPlan,
@@ -20,7 +23,9 @@ from firewall_monitor.monitoring.events import parse_firewall_log_line
 
 app = typer.Typer(help="Validate and generate safe Linux firewall policy rulesets.")
 events_app = typer.Typer(help="Ingest and inspect firewall log events.")
+detect_app = typer.Typer(help="Detect repeated suspicious firewall events.")
 app.add_typer(events_app, name="events")
+app.add_typer(detect_app, name="detect")
 
 DEFAULT_DB_PATH = Path("data/firewall-monitor.sqlite3")
 
@@ -143,6 +148,49 @@ def list_events(
             f"{event.source_ip} -> {destination} "
             f"rule={event.rule_name}"
         )
+
+
+@detect_app.command("scan")
+def scan_events(
+    db_path: Annotated[
+        Path,
+        typer.Option("--db", help="SQLite database path."),
+    ] = DEFAULT_DB_PATH,
+    min_attempts: int = typer.Option(5, "--min-attempts", min=2, max=1000),
+    window_minutes: int = typer.Option(15, "--window-minutes", min=1, max=1440),
+    block_minutes: int = typer.Option(30, "--block-minutes", min=1, max=1440),
+) -> None:
+    """Find repeated blocked sources and print dry-run block recommendations."""
+
+    engine = create_sqlite_engine(db_path)
+    init_database(engine)
+    repository = FirewallEventRepository(engine)
+    now = datetime.now(UTC)
+    since = now - timedelta(minutes=window_minutes)
+    findings = find_suspicious_sources(
+        repository.list_since(since),
+        min_attempts=min_attempts,
+    )
+
+    if not findings:
+        typer.echo("No suspicious sources found.")
+        return
+
+    typer.echo("Dry run only. No firewall commands were executed.")
+    for finding in findings:
+        block_plan = build_temporary_block_plan(
+            finding.source_ip,
+            now,
+            duration_minutes=block_minutes,
+        )
+        typer.echo(
+            "Suspicious source detected: "
+            f"{finding.source_ip} "
+            f"attempts={finding.attempt_count} "
+            f"first_seen={finding.first_seen.isoformat()} "
+            f"last_seen={finding.last_seen.isoformat()}"
+        )
+        typer.echo(f"Recommended temporary block: nft {block_plan.nft_rule}")
 
 
 def _print_safety_plan(environment: FirewallEnvironment, plan: ApplyPlan) -> None:

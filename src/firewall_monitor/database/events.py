@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
@@ -37,6 +39,15 @@ class FirewallEventRepository:
             select(FirewallEventRecord)
             .order_by(FirewallEventRecord.occurred_at.desc())
             .limit(limit)
+        )
+        with Session(self._engine) as session:
+            return list(session.scalars(statement))
+
+    def list_since(self, since: datetime) -> list[FirewallEventRecord]:
+        statement = (
+            select(FirewallEventRecord)
+            .where(FirewallEventRecord.occurred_at >= since)
+            .order_by(FirewallEventRecord.occurred_at.desc())
         )
         with Session(self._engine) as session:
             return list(session.scalars(statement))
