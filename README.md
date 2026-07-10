@@ -12,6 +12,8 @@ This repository is the start of a Python-based Linux host firewall manager. The 
 - Reports future real-apply blockers such as non-Linux hosts, missing `nft`, and missing root privileges.
 - Detects remote SSH sessions and warns about policies that could lock out an operator.
 - Includes backup helpers and a testable nftables command abstraction for future integration.
+- Parses firewall-monitor log lines into structured events.
+- Stores firewall events in SQLite and lists recent activity from the CLI.
 - Includes unit tests, Ruff, mypy, and GitHub Actions CI.
 
 ## Safety Model
@@ -28,6 +30,21 @@ firewall-monitor validate examples/firewall.yaml
 firewall-monitor status
 firewall-monitor generate examples/firewall.yaml
 firewall-monitor apply examples/firewall.yaml --dry-run
+```
+
+## Event Logging
+
+The event logging milestone works with log files you provide. It does not tail system logs automatically yet.
+
+```bash
+firewall-monitor events ingest examples/firewall-events.txt --db ./data/firewall-monitor.sqlite3
+firewall-monitor events list --db ./data/firewall-monitor.sqlite3
+```
+
+Expected log lines use the prefix emitted by generated logging rules:
+
+```text
+firewall-monitor block-telnet: IN=eth0 OUT= SRC=203.0.113.10 DST=192.0.2.20 PROTO=TCP DPT=23
 ```
 
 ## Example Policy
@@ -68,9 +85,7 @@ python -m pytest
 
 - Add ruleset backup and rollback.
 - Add explicit, guarded nftables apply support for Linux.
-- Add structured firewall event logging.
 - Add suspicious connection detection and temporary IP blocking.
-- Add SQLite persistence.
 - Add a FastAPI backend and lightweight dashboard.
 - Add systemd service files for Linux deployment.
 - Add IPv6 support after the IPv4 model is stable.

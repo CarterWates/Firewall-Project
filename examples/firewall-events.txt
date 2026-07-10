@@ -1,0 +1,2 @@
+ordinary kernel line
+firewall-monitor block-telnet: IN=eth0 OUT= SRC=203.0.113.10 DST=192.0.2.20 PROTO=TCP DPT=23

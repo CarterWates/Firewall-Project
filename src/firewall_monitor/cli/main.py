@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from pydantic import ValidationError
 
 from firewall_monitor.core.loader import PolicyLoadError, load_policy_file
+from firewall_monitor.database.events import FirewallEventRepository
+from firewall_monitor.database.session import create_sqlite_engine, init_database
 from firewall_monitor.firewall.nftables import render_nftables_ruleset
 from firewall_monitor.firewall.safety import (
     ApplyPlan,
@@ -13,8 +16,13 @@ from firewall_monitor.firewall.safety import (
     build_apply_plan,
     inspect_environment,
 )
+from firewall_monitor.monitoring.events import parse_firewall_log_line
 
 app = typer.Typer(help="Validate and generate safe Linux firewall policy rulesets.")
+events_app = typer.Typer(help="Ingest and inspect firewall log events.")
+app.add_typer(events_app, name="events")
+
+DEFAULT_DB_PATH = Path("data/firewall-monitor.sqlite3")
 
 
 @app.command()
@@ -76,6 +84,65 @@ def apply(policy_file: Path, dry_run: bool = typer.Option(False, "--dry-run")) -
     _print_safety_plan(environment, plan)
     typer.echo()
     typer.echo(render_nftables_ruleset(policy), nl=False)
+
+
+@events_app.command("ingest")
+def ingest_events(
+    log_file: Path,
+    db_path: Annotated[
+        Path,
+        typer.Option("--db", help="SQLite database path."),
+    ] = DEFAULT_DB_PATH,
+) -> None:
+    """Parse a log file and store firewall-monitor events."""
+
+    if not log_file.exists():
+        typer.echo(f"Log file does not exist: {log_file}")
+        raise typer.Exit(1)
+
+    engine = create_sqlite_engine(db_path)
+    init_database(engine)
+    repository = FirewallEventRepository(engine)
+    imported = 0
+
+    for line in log_file.read_text(encoding="utf-8").splitlines():
+        event = parse_firewall_log_line(line)
+        if event is None:
+            continue
+        repository.add(event)
+        imported += 1
+
+    typer.echo(f"Imported {imported} event(s)")
+
+
+@events_app.command("list")
+def list_events(
+    db_path: Annotated[
+        Path,
+        typer.Option("--db", help="SQLite database path."),
+    ] = DEFAULT_DB_PATH,
+    limit: int = typer.Option(20, "--limit", min=1, max=200),
+) -> None:
+    """List recent stored firewall events."""
+
+    engine = create_sqlite_engine(db_path)
+    init_database(engine)
+    repository = FirewallEventRepository(engine)
+    events = repository.list_recent(limit=limit)
+    if not events:
+        typer.echo("No firewall events found.")
+        return
+
+    for event in events:
+        destination = event.destination_ip
+        if event.destination_port is not None:
+            destination = f"{destination}:{event.destination_port}"
+        typer.echo(
+            f"{event.occurred_at.isoformat()} "
+            f"{event.action} {event.protocol} "
+            f"{event.source_ip} -> {destination} "
+            f"rule={event.rule_name}"
+        )
 
 
 def _print_safety_plan(environment: FirewallEnvironment, plan: ApplyPlan) -> None:
