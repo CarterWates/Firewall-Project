@@ -10,7 +10,9 @@ Do not open a public issue for sensitive vulnerabilities. Report concerns privat
 
 ## Security Assumptions
 
-- Phase one does not apply firewall rules or execute privileged commands.
+- The current CLI does not apply firewall rules or execute privileged commands.
+- Safety planning reports Linux, root, nftables, and remote SSH state before any future apply support is added.
+- Backup helpers write caller-supplied ruleset text; they do not collect rules from the host by themselves.
 - Generated nftables output must be reviewed before use.
 - Real firewall changes should be tested only in an isolated Linux virtual machine or disposable environment.
 - Secrets and machine-specific configuration belong in environment variables or ignored local files.
@@ -20,7 +22,8 @@ Do not open a public issue for sensitive vulnerabilities. Report concerns privat
 - IPv4 only.
 - No real nftables apply support yet.
 - No backup, rollback, audit log, monitoring daemon, dashboard, or detection engine yet.
-- The current tests verify generation behavior, not kernel-level firewall behavior.
+- Backup file helpers exist, but there is no automated ruleset collection or rollback yet.
+- The current tests verify generation and safety-planning behavior, not kernel-level firewall behavior.
 
 ## Safe Testing Expectations
 

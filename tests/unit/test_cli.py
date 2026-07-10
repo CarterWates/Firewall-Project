@@ -55,7 +55,7 @@ def test_apply_requires_dry_run(tmp_path: Path) -> None:
     result = runner.invoke(app, ["apply", str(policy_path)])
 
     assert result.exit_code != 0
-    assert "phase one only supports --dry-run" in result.stdout
+    assert "this milestone only supports --dry-run" in result.stdout
 
 
 def test_apply_dry_run_prints_ruleset_without_applying(tmp_path: Path) -> None:
@@ -67,4 +67,16 @@ def test_apply_dry_run_prints_ruleset_without_applying(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "Dry run only" in result.stdout
+    assert "Safety plan" in result.stdout
     assert "table inet firewall_monitor" in result.stdout
+
+
+def test_status_reports_environment_without_requiring_linux() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["status"])
+
+    assert result.exit_code == 0
+    assert "Firewall monitor status" in result.stdout
+    assert "Platform:" in result.stdout
+    assert "nftables binary:" in result.stdout

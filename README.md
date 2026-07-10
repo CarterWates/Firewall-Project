@@ -1,6 +1,6 @@
 # Linux Firewall and Network Monitoring Platform
 
-This repository is the start of a Python-based Linux host firewall manager. The first milestone focuses on safe policy validation and nftables ruleset generation from YAML. It does not modify the host firewall.
+This repository is the start of a Python-based Linux host firewall manager. The current milestone focuses on safe policy validation, nftables ruleset generation, and operational safety planning. It does not modify the host firewall.
 
 ## Current Capabilities
 
@@ -8,18 +8,24 @@ This repository is the start of a Python-based Linux host firewall manager. The 
 - Supports IPv4 addresses and CIDR ranges.
 - Checks directions, actions, protocols, ports, connection states, duplicate names, duplicate rule content, and unsupported protocol/port combinations.
 - Generates deterministic nftables ruleset text.
-- Provides a Typer CLI for validation, generation, and dry-run previews.
+- Provides a Typer CLI for validation, generation, status checks, and dry-run previews.
+- Reports future real-apply blockers such as non-Linux hosts, missing `nft`, and missing root privileges.
+- Detects remote SSH sessions and warns about policies that could lock out an operator.
+- Includes backup helpers and a testable nftables command abstraction for future integration.
 - Includes unit tests, Ruff, mypy, and GitHub Actions CI.
 
 ## Safety Model
 
-Phase one is intentionally read-only. The CLI never executes `nft`, never requires root privileges, and refuses `apply` unless `--dry-run` is provided. Real firewall application, backups, rollback, audit logging, and timed rollback are future phases and should be developed in an isolated Linux test environment.
+The current code is intentionally read-only for normal use. The CLI never applies rules, never requires root privileges, and refuses `apply` unless `--dry-run` is provided. Dry-run output includes a safety plan so future real application can be added carefully.
+
+The repository now includes an nftables client abstraction and backup file helpers, but tests use fakes and supplied ruleset text. Real firewall application, rollback, audit logging, and timed rollback remain future phases and should be developed in an isolated Linux test environment.
 
 ## Quick Start
 
 ```bash
 python -m pip install -e ".[dev]"
 firewall-monitor validate examples/firewall.yaml
+firewall-monitor status
 firewall-monitor generate examples/firewall.yaml
 firewall-monitor apply examples/firewall.yaml --dry-run
 ```
